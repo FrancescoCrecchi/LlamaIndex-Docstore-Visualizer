@@ -9,6 +9,49 @@ import {
   getFilteredGraphData
 } from './utils/docstoreUtils';
 
+const DiffAccordion = ({ changes }) => {
+  const [open, setOpen] = useState({
+    unchanged: false,
+    added: true,
+    modified: true,
+    deleted: true,
+  });
+
+  const types = [
+    { key: 'added', label: 'Added Nodes', color: 'green' },
+    { key: 'deleted', label: 'Deleted Nodes', color: 'red' },
+    { key: 'modified', label: 'Modified Nodes', color: 'yellow' },
+    { key: 'unchanged', label: 'Unchanged Nodes', color: 'gray' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {types.map(({ key, label, color }) =>
+        changes[key].length > 0 ? (
+          <div key={key} className={`border-l-4 border-${color}-400 bg-white dark:bg-gray-700 rounded-xl shadow-sm overflow-hidden`}>
+            <button
+              className={`w-full flex items-center justify-between px-4 py-3 text-lg font-semibold bg-${color}-50 dark:bg-${color}-800 text-${color}-800 dark:text-${color}-200 focus:outline-none`}
+              onClick={() => setOpen(o => ({ ...o, [key]: !o[key] }))}
+            >
+              <span>{label} ({changes[key].length})</span>
+              <span>{open[key] ? '▲' : '▼'}</span>
+            </button>
+            {open[key] && (
+              <ul className="divide-y divide-gray-200 dark:divide-gray-600">
+                {changes[key].map(node => (
+                  <li key={node.id} className="p-4">
+                    <span className="font-mono text-sm break-all">{node.id}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null
+      )}
+    </div>
+  );
+};
+
 const App = () => {
   const [beforeFile, setBeforeFile] = useState(null);
   const [afterFile, setAfterFile] = useState(null);
@@ -79,9 +122,11 @@ const App = () => {
     }
   };
 
+  const hasGraphData = (beforeGraphData && beforeGraphData.nodes.length > 0) || (afterGraphData && afterGraphData.nodes.length > 0);
+
   return (
-    <div className="min-h-screen w-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col items-center">
-      <div className="flex-1 w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 space-y-8 font-sans relative">
+    <div className="min-h-screen w-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col items-center justify-center overflow-hidden">
+      <div className="w-full max-w-5xl bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 space-y-8 font-sans relative">
         <header className="text-center">
           <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-500">
             LlamaIndex Docstore Visualizer
@@ -92,7 +137,7 @@ const App = () => {
         </header>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex flex-col items-center p-4 border border-gray-200 dark:border-gray-700 rounded-xl">
+          <div className="flex flex-col items-center p-4 border border-gray-200 dark:border-gray-700 rounded-xl w-full max-w-md mx-auto">
             <label htmlFor="beforeFile" className="cursor-pointer">
               <div className="flex items-center space-x-2">
                 <span className="text-lg font-medium">Before Docstore</span>
@@ -108,7 +153,7 @@ const App = () => {
             {beforeFile && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Selected: {beforeFile.name}</p>}
           </div>
 
-          <div className="flex flex-col items-center p-4 border border-gray-200 dark:border-gray-700 rounded-xl">
+          <div className="flex flex-col items-center p-4 border border-gray-200 dark:border-gray-700 rounded-xl w-full max-w-md mx-auto">
             <label htmlFor="afterFile" className="cursor-pointer">
               <div className="flex items-center space-x-2">
                 <span className="text-lg font-medium">After Docstore</span>
@@ -152,7 +197,7 @@ const App = () => {
           </div>
         )}
 
-        {(changes.added.length > 0 || changes.deleted.length > 0 || changes.modified.length > 0) && (
+        {hasGraphData && (
           <div className="mt-8">
             <div className="flex justify-center space-x-2 mb-4">
               <button
@@ -174,79 +219,7 @@ const App = () => {
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 text-center">
                   Changes Found
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="flex items-center justify-center p-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                    Unchanged: {changes.unchanged.length}
-                  </div>
-                  <div className="flex items-center justify-center p-3 rounded-lg bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
-                    Added: {changes.added.length}
-                  </div>
-                  <div className="flex items-center justify-center p-3 rounded-lg bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300">
-                    Deleted: {changes.deleted.length}
-                  </div>
-                  <div className="flex items-center justify-center p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300">
-                    Modified: {changes.modified.length}
-                  </div>
-                </div>
-
-                <ul className="space-y-4">
-                  {changes.unchanged.length > 0 && (
-                    <li className="bg-white dark:bg-gray-700 rounded-xl shadow-sm overflow-hidden border border-white-300 dark:border-white-600">
-                      <h3 className="flex items-center space-x-2 text-lg font-semibold bg-gray-20 dark:bg-gray-750 text-gray-800 dark:text-gray-200 px-4 py-3">
-                        <span>Unchanged Nodes</span>
-                      </h3>
-                      <ul className="divide-y divide-gray-200 dark:divide-gray-600">
-                        {changes.unchanged.map(node => (
-                          <li key={node.id} className="p-4">
-                            <span className="font-mono text-sm break-all">{node.id}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
-                  )}
-                  {changes.added.length > 0 && (
-                    <li className="bg-white dark:bg-gray-700 rounded-xl shadow-sm overflow-hidden border border-green-300 dark:border-green-600">
-                      <h3 className="flex items-center space-x-2 text-lg font-semibold bg-green-50 dark:bg-green-800 text-green-800 dark:text-green-200 px-4 py-3">
-                        <span>Added Nodes</span>
-                      </h3>
-                      <ul className="divide-y divide-gray-200 dark:divide-gray-600">
-                        {changes.added.map(node => (
-                          <li key={node.id} className="p-4">
-                            <span className="font-mono text-sm break-all">{node.id}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
-                  )}
-                  {changes.modified.length > 0 && (
-                    <li className="bg-white dark:bg-gray-700 rounded-xl shadow-sm overflow-hidden border border-yellow-300 dark:border-yellow-600">
-                      <h3 className="flex items-center space-x-2 text-lg font-semibold bg-yellow-50 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 px-4 py-3">
-                        <span>Modified Nodes</span>
-                      </h3>
-                      <ul className="divide-y divide-gray-200 dark:divide-gray-600">
-                        {changes.modified.map(node => (
-                          <li key={node.id} className="p-4">
-                            <span className="font-mono text-sm break-all">{node.id}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
-                  )}
-                  {changes.deleted.length > 0 && (
-                    <li className="bg-white dark:bg-gray-700 rounded-xl shadow-sm overflow-hidden border border-red-300 dark:border-red-600">
-                      <h3 className="flex items-center space-x-2 text-lg font-semibold bg-red-50 dark:bg-red-800 text-red-800 dark:text-red-200 px-4 py-3">
-                        <span>Deleted Nodes</span>
-                      </h3>
-                      <ul className="divide-y divide-gray-200 dark:divide-gray-600">
-                        {changes.deleted.map(node => (
-                          <li key={node.id} className="p-4">
-                            <span className="font-mono text-sm break-all">{node.id}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
-                  )}
-                </ul>
+                <DiffAccordion changes={changes} />
               </div>
             ) : (
               <div className="space-y-6">
@@ -268,7 +241,7 @@ const App = () => {
                 </div>
                 <NodeTypeFilterBar nodeTypeFilter={nodeTypeFilter} setNodeTypeFilter={setNodeTypeFilter} />
                 {view === 'graph' && (
-                  <div className="relative">
+                  <div className="relative w-full max-w-5xl mx-auto">
                     <GraphLegendOverlay />
                     {currentGraphView === 'before' && beforeGraphData ? (
                       <DocstoreGraph
@@ -294,7 +267,7 @@ const App = () => {
           </div>
         )}
 
-        {(!changes.added.length && !changes.deleted.length && !changes.modified.length) && !isLoading && !error && (
+        {!hasGraphData && !isLoading && !error && (
           <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
             <p>Upload files and click 'Analyze' to see the changes.</p>
           </div>

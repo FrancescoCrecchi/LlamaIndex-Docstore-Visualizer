@@ -58,8 +58,8 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
 
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id)
-        .distance((l) => l.source.type === 'document' || l.target.type === 'document' ? 400 : 30))
-      .force("charge", d3.forceManyBody().strength(-2500).distanceMax(100))
+        .distance((l) => l.source.type === 'document' || l.target.type === 'document' ? 100 : 30))
+      .force("charge", d3.forceManyBody().strength(-200))
       .force("center", d3.forceCenter(width / 2, height / 2));
 
     const link = g.append("g")
@@ -86,8 +86,6 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
       })
       .call(drag(simulation));
 
-    let zoomFitted = false;
-
     simulation.on("tick", () => {
       link
         .attr("x1", d => d.source.x)
@@ -98,9 +96,8 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
         .attr("cx", d => d.x)
         .attr("cy", d => d.y);
 
-      // Fit graph to all nodes after first tick
-      if (!zoomFitted) {
-        zoomFitted = true;
+      // Always fit graph to all nodes on first tick of each render
+      if (simulation.tickCount === 1) {
         const xs = nodes.map(d => d.x);
         const ys = nodes.map(d => d.y);
         const minX = Math.min(...xs);
@@ -111,9 +108,6 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
         const padding = 40;
         const boxWidth = maxX - minX + padding * 2;
         const boxHeight = maxY - minY + padding * 2;
-
-        const width = 1000;
-        const height = 800;
 
         const scale = Math.min(width / boxWidth, height / boxHeight, 1);
         const translateX = width / 2 - scale * (minX + maxX) / 2;
