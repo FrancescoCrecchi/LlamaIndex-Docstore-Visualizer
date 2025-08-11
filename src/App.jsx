@@ -31,21 +31,22 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
   const svgRef = useRef();
   const [tooltip, setTooltip] = useState({ isVisible: false, content: '', position: { x: 0, y: 0 } });
 
-  const filteredNodes = graphData.nodes.filter(node =>
-    nodeTypeFilter.includes(node.type)
-  );
-  const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
-  const filteredLinks = graphData.links.filter(link =>
-    filteredNodeIds.has(link.source.id || link.source) &&
-    filteredNodeIds.has(link.target.id || link.target)
-  );
-  const filteredGraphData = {
-    ...graphData,
-    nodes: filteredNodes,
-    links: filteredLinks,
-  };
 
   useEffect(() => {
+    const filteredNodes = graphData.nodes.filter(node =>
+      nodeTypeFilter.includes(node.type)
+    );
+    const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredLinks = graphData.links.filter(link =>
+      filteredNodeIds.has(link.source.id || link.source) &&
+      filteredNodeIds.has(link.target.id || link.target)
+    );
+    const filteredGraphData = {
+      ...graphData,
+      nodes: filteredNodes,
+      links: filteredLinks,
+    };
+
     d3.select(svgRef.current).selectAll('*').remove();
 
     if (!filteredGraphData || !filteredGraphData.nodes || filteredGraphData.nodes.length === 0) {
@@ -60,10 +61,7 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
       return;
     }
 
-    // Use filteredGraphData here!
     const { nodes, links } = filteredGraphData;
-
-    // Adjusted width and height for a larger initial view
     const width = 1000;
     const height = 800;
 
@@ -72,16 +70,11 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
       .attr("height", "100%")
       .attr("viewBox", `0 0 ${width} ${height}`);
 
-    // Create a group element to hold the graph, which will be transformed by the zoom behavior
     const g = svg.append("g");
 
-    // Define the zoom behavior
     const zoom = d3.zoom()
       .scaleExtent([0.1, 4])
-      .filter(event => {
-        // Disable double-click zoom
-        return event.type !== 'dblclick';
-      })
+      .filter(event => event.type !== 'dblclick')
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
       });
@@ -89,8 +82,9 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
     svg.call(zoom);
 
     const simulation = d3.forceSimulation(nodes)
-      .force("link", d3.forceLink(links).id(d => d.id).distance(120)) // Slightly increased distance
-      .force("charge", d3.forceManyBody().strength(-250)) // Slightly stronger repulsion
+      .force("link", d3.forceLink(links).id(d => d.id)
+        .distance((l) => l.source.type === 'document' || l.target.type === 'document' ? 400 : 30))
+      .force("charge", d3.forceManyBody().strength(-2500).distanceMax(100))
       .force("center", d3.forceCenter(width / 2, height / 2));
 
     const link = g.append("g")
@@ -129,38 +123,33 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
         .attr("cy", d => d.y);
     });
 
-  }, [filteredGraphData, viewType, nodeTypeFilter]);
+    // Attach tooltip event handlers to circles
+    svg.selectAll("circle")
+      .on("mouseover", (event, d) => {
+        const status = d.isNew ? 'New' : (d.isDeleted ? 'Deleted' : (d.isModified ? 'Modified' : 'Unchanged'));
+        let type = d.type === 'document' ? 'Document' : 'Text Node';
+        let connectedNodesCount = 0;
 
-  // useEffect(() => {
-  //   // Attach tooltip event handlers to circles
-  //   if (!svgRef.current) return;
-  //   const svg = d3.select(svgRef.current);
-  //   svg.selectAll("circle")
-  //     .on("mouseover", (event, d) => {
-  //       const status = d.isNew ? 'New' : (d.isDeleted ? 'Deleted' : (d.isModified ? 'Modified' : 'Unchanged'));
-  //       let type = d.type === 'document' ? 'Document' : 'Text Node';
-  //       let connectedNodesCount = 0;
+        if (d.type === 'document') {
+          connectedNodesCount = links.filter(link => link.target.id === d.id).length;
+          type += ` (Connected Nodes: ${connectedNodesCount})`;
+        }
 
-  //       // If it's a document node, count how many links target it
-  //       if (d.type === 'document') {
-  //         connectedNodesCount = links.filter(link => link.target.id === d.id).length;
-  //         type += ` (Connected Nodes: ${connectedNodesCount})`;
-  //       }
+        const content = `
+            <strong>ID:</strong> ${d.id}<br/>
+            <strong>Type:</strong> ${type}<br/>
+            <strong>Status:</strong> ${status}
+        `;
+        setTooltip({ isVisible: true, content, position: { x: event.offsetX, y: event.offsetY } });
+      })
+      // .on("mousemove", (event) => {
+      //   setTooltip(prev => ({ ...prev, position: { x: event.offsetX, y: event.offsetY } }));
+      // })
+      .on("mouseout", () => {
+        setTooltip({ isVisible: false, content: '', position: { x: 0, y: 0 } });
+      });
 
-  //       const content = `
-  //           <strong>ID:</strong> ${d.id}<br/>
-  //           <strong>Type:</strong> ${type}<br/>
-  //           <strong>Status:</strong> ${status}
-  //       `;
-  //       setTooltip({ isVisible: true, content, position: { x: event.clientX, y: event.clientY } });
-  //     })
-  //     .on("mousemove", (event) => {
-  //       setTooltip(prev => ({ ...prev, position: { x: event.clientX, y: event.clientY } }));
-  //     })
-  //     .on("mouseout", () => {
-  //       setTooltip({ isVisible: false, content: '', position: { x: 0, y: 0 } });
-  //     });
-  // }, [filteredGraphData, viewType, nodeTypeFilter]);
+  }, [graphData, viewType, nodeTypeFilter]);
 
   const drag = simulation => {
     function dragstarted(event) {
@@ -490,7 +479,7 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-8 flex flex-col items-center">
+    <div className="w-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-8 flex flex-col items-center">
       <div className="w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 space-y-8 font-sans relative">
         <header className="text-center">
           <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-500">
