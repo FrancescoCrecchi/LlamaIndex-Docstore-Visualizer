@@ -134,11 +134,50 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
           type += ` (Connected Nodes: ${connectedNodesCount})`;
         }
 
+        const typeColor = d.type === 'document' ? '#3b82f6' : '#6b7280'; // blue for document, grey for text-node
+        const statusMap = {
+          New: '#10b981', // green
+          Modified: '#f59e42', // yellow
+          Deleted: '#ef4444', // red
+          Unchanged: '#6b7280', // gray
+        };
+        const statusColor = statusMap[status] || '#6b7280';
+
         const content = `
-            <strong>ID:</strong> ${d.id}<br/>
-            <strong>Type:</strong> ${type}<br/>
-            <strong>Status:</strong> ${status}
-        `;
+  <div style="margin-bottom: 10px;">
+    <strong>ID:</strong> ${d.id}
+  </div>
+  <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+    <strong>Type:</strong>
+    <span style="
+      background: ${typeColor};
+      color: white;
+      border-radius: 9999px;
+      padding: 2px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: 6px;
+      display: inline-block;
+    ">
+      ${type}
+    </span>
+  </div>
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <strong>Status:</strong>
+    <span style="
+      background: ${statusColor};
+      color: white;
+      border-radius: 9999px;
+      padding: 2px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: 6px;
+      display: inline-block;
+    ">
+      ${status}
+    </span>
+  </div>
+`;
         setTooltip({ isVisible: true, content, position: { x: event.offsetX, y: event.offsetY } });
       })
       .on("mouseout", () => {
