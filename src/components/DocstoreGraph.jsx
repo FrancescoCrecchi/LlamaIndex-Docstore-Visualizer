@@ -86,6 +86,8 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
       })
       .call(drag(simulation));
 
+    let zoomFitted = false;
+
     simulation.on("tick", () => {
       link
         .attr("x1", d => d.source.x)
@@ -95,6 +97,35 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
       node
         .attr("cx", d => d.x)
         .attr("cy", d => d.y);
+
+      // Fit graph to all nodes after first tick
+      if (!zoomFitted) {
+        zoomFitted = true;
+        const xs = nodes.map(d => d.x);
+        const ys = nodes.map(d => d.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+
+        const padding = 40;
+        const boxWidth = maxX - minX + padding * 2;
+        const boxHeight = maxY - minY + padding * 2;
+
+        const width = 1000;
+        const height = 800;
+
+        const scale = Math.min(width / boxWidth, height / boxHeight, 1);
+        const translateX = width / 2 - scale * (minX + maxX) / 2;
+        const translateY = height / 2 - scale * (minY + maxY) / 2;
+
+        svg.call(
+          zoom.transform,
+          d3.zoomIdentity
+            .translate(translateX, translateY)
+            .scale(scale)
+        );
+      }
     });
 
     // Attach tooltip event handlers to circles
@@ -147,12 +178,10 @@ const DocstoreGraph = ({ graphData, viewType, nodeTypeFilter }) => {
   }, [graphData, viewType, nodeTypeFilter]);
 
   return (
-    <>
-      <div className="w-full h-[600px] bg-gray-50 dark:bg-gray-800 rounded-lg shadow-inner overflow-hidden relative">
-        <svg ref={svgRef} className="w-full h-full"></svg>
-      </div>
+    <div className="w-full h-[600px] bg-gray-50 dark:bg-gray-800 rounded-lg shadow-inner overflow-hidden relative border border-gray-200 dark:border-gray-700">
+      <svg ref={svgRef} className="w-full h-full"></svg>
       <Tooltip {...tooltip} />
-    </>
+    </div>
   );
 };
 
